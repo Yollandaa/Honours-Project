@@ -1,85 +1,86 @@
-# Creating a dynamic birthmark for python codes
-
-# So I like the idea of representing each program as a graph.
-# The basic idea is to treat variables as nodes (vertices), and the control flow of the variables as edges
-# After converting the two programs into graphs, then I can compare if there is some kind of similarity in them
-# I am sure there are many methods that compare two graphs (e.g., isormophism)
-# https://docs.python.org/3/library/ast.html
-# Use this https://github.com/coetaur0/staticfg -> convert a piece of code to control flow 
-
 import ast
 import networkx as nx
+from graph import plot
+from graph_from_ast import build_ast_graph, visualize_graph
+
 
 class DynamicBirthmarkGenerator:
     def __init__(self, code):
         self.graph = None
         self.generate_dynamic_birthmark(code)
 
-    def generate_ast_from_code(self, code):
+    def calculate_similarity_score(self, other_graph):
         """
-        Receive Python code and return the abstract syntax tree (AST).
+        Calculates the similarity score between this graph and another graph.
         """
-        return ast.parse(code)
+        total_nodes = len(self.graph.nodes)
+        matching_nodes = 0
 
-    def generate_graph_from_ast(self, ast_tree):
-        """
-        Generate a graph representation from the abstract syntax tree (AST) of Python code.
-        """
-        G = nx.DiGraph() # Directed graph
+        for node_id, node_data in self.graph.nodes(data=True):
+            if node_id in other_graph.nodes:
+                matching_nodes += 1
+                # Assuming dynamic_info is a set of tuples (operation, value) for simplicity
+                if (
+                    node_data["dynamic_info"]
+                    == other_graph.nodes[node_id]["dynamic_info"]
+                ):
+                    matching_nodes -= 1  # Subtract one for exact matches
 
-        def traverse(node, parent_id): # Adding nodes and edges to the graph
-            node_id = id(node)
-            G.add_node(node_id, type=type(node).__name__)
-            if parent_id is not None:
-                G.add_edge(parent_id, node_id)
-            for child in ast.iter_child_nodes(node):
-                traverse(child, node_id)
-
-        traverse(ast_tree, None)
-        return G
-
-    def generate_dynamic_birthmark(self, code):
-        """
-        Generate a dynamic birthmark for Python code.
-        """
-        ast_tree = self.generate_ast_from_code(code)
-        self.graph = self.generate_graph_from_ast(ast_tree)
-
-        # Add dynamic information here (e.g., variable values, function calls, etc.)
-        # I could: add functionality to track variable values or function calls during execution and then incorporate this information into the graph representation.
-        # Not sure how helpful this could be
+        return max((matching_nodes / total_nodes) * 100, 0)
 
     def get_graph(self):
         """
-        Get the generated graph.
+        Gets the generated graph.
         """
         return self.graph
 
+
 def compare_birthmarks(code1, code2):
     """
-    Compare birthmarks of two Python codes.
+    Compares birthmarks of two Python codes.
     """
-    if not isinstance(code1, DynamicBirthmarkGenerator) or not isinstance(code2, DynamicBirthmarkGenerator):
-        print("Error: Both inputs should be instances of DynamicBirthmarkGenerator.")
-        return
 
-    birthmark1 = code1.get_graph()
-    birthmark2 = code2.get_graph()
+    birthmark1 = build_ast_graph(code1)
+    birthmark2 = build_ast_graph(code2)
 
-    #TODO: In here, I can create my own comparison function to compare the birthmarks of the 2 codes
-
-    # An existing isomorphic implementation of nx
+    # Structural/Static comparison: Check if the graphs are isomorphic
+    # Same number of nodes and edges and other features
+    # (each vertex v has the exact same set of neighbors in both graphs.):
+    # This could just be the base case.
     if nx.is_isomorphic(birthmark1, birthmark2):
-        print("The two code are isomorphic.")
+        print("The two codes are structurally similar.")
     else:
-        print("The two codes are not isomorphic.")
+        print("The two codes are structurally dissimilar.")
 
-# I can instead read in 2 separate files
+    # Compare the number of nodes and edges
+    if (
+        birthmark1.number_of_nodes() == birthmark2.number_of_nodes()
+        and birthmark1.number_of_edges() == birthmark2.number_of_edges()
+    ):
+        # Check if nodes and their dynamic information match
+        match_count = sum(
+            1
+            for n1, n2 in zip(birthmark1.nodes(data=True), birthmark2.nodes(data=True))
+            if n1[1].get("dynamic_info") == n2[1].get("dynamic_info")
+        )
+        similarity_percentage = (match_count / birthmark1.number_of_nodes()) * 100
+        print(f"The two codes are {similarity_percentage}% similar.")
+    else:
+        print("The two codes are structurally dissimilar.")
+
+    print(birthmark1)
+    print(birthmark2)
+    visualize_graph(birthmark1)
+    visualize_graph(birthmark2)
+
+
+# Example usage
 python_code1 = """
 def factorial(n):
     if n == 0:
         return 1
     else:
+        print(n)
         return n * factorial(n-1)
 
 result = factorial(5)
@@ -87,15 +88,14 @@ print(result)
 """
 
 python_code2 = """
-def factorial(n):
+def calc_factorial(n):
     if n == 0:
         return 1
     else:
-        return n * factorial(n-1)
+        return n * calc_factorial(n-1)
 
-result = factorial(5)
-print(result)
+output = calc_factorial(5)
+print(output)
 """
-code1 = DynamicBirthmarkGenerator(python_code1)
-code2 = DynamicBirthmarkGenerator(python_code2)
-compare_birthmarks(code1, code2)
+
+compare_birthmarks(python_code1, python_code2)
