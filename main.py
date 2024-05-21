@@ -4,14 +4,14 @@ from graph import plot
 from graph_from_ast import build_ast_graph, visualize_graph
 
 
-def differential_analysis(graph1, graph2):
+def differential_analysis(graph1, graph2, code1, code2):
 
     # Normalize and compare ASTs
-    normalized_original = normalize_ast(graph1)
-    normalized_plagiarized = normalize_ast(graph2)
+    normalized_original, original_lines = normalize_ast(graph1, code1)
+    normalized_plagiarized, plagiarized_lines = normalize_ast(graph2, code2)
 
-    # Calculate weighted similarity
-    similarity_score = calculate_weighted_similarity(
+    # Calculate weighted similarity and report similar lines
+    similarity_score, similar_lines = calculate_weighted_similarity_and_report_lines(
         normalized_original, normalized_plagiarized
     )
 
@@ -19,29 +19,23 @@ def differential_analysis(graph1, graph2):
     # Threshold comparison
     if similarity_score > PLAGIARISM_THRESHOLD:
         print("Potential plagiarism detected.")
+        print("Similar lines:")
+        for line1, line2 in similar_lines:
+            print(
+                f"Code 1: {original_lines[line1]}\nCode 2: {plagiarized_lines[line2]}\n"
+            )
     else:
         print("No plagiarism detected.")
 
 
-def normalize_ast(graph):
+def normalize_ast(graph, code):
     """
     Normalize the AST graph by stripping out variable names and other non-essential details
-    to focus on the structure of the code.
+    to focus on the structure of the code, and map nodes to actual code lines.
     """
     normalized_graph = {}
-    for node, edges in graph.items():
-        normalized_node = normalize_node(node)
-        normalized_edges = [normalize_node(edge) for edge in edges]
-        normalized_graph[normalized_node] = normalized_edges
-    return normalized_graph
+    line_map = {}  # Map normalized nodes to their corresponding code lines
 
-
-def normalize_ast(graph):
-    """
-    Normalize the AST graph by stripping out variable names and other non-essential details
-    to focus on the structure of the code.
-    """
-    normalized_graph = {}
     for node_id, data in graph.nodes(data=True):
         normalized_node = normalize_node(data["label"])
         normalized_edges = [
@@ -49,30 +43,60 @@ def normalize_ast(graph):
             for neighbor in graph.neighbors(node_id)
         ]
         normalized_graph[normalized_node] = normalized_edges
-    return normalized_graph
+        line_map[normalized_node] = get_code_line(data["label"], code)
+
+    return normalized_graph, line_map
 
 
 def normalize_node(label):
     """
-    Example normalization function that removes specific identifiers or variable names.
+    Example normalization function that removes specific identifiers or variable names,
+    and includes line information.
     """
     # Simplify labels for normalization by removing values, e.g., 'Assign: x = 1' -> 'Assign'
-    return label.split(":")[0]
+    simplified_label = label.split(":")[0]
+
+    return simplified_label
 
 
-def calculate_weighted_similarity(graph1, graph2):
+def get_code_line(label, code):
     """
-    Calculate a weighted similarity score between two normalized AST graphs.
+    Extracts the actual line of code based on the node label.
+    """
+    try:
+        line_number = int(label.split(":")[1].strip().split()[1])
+        code_line = code.splitlines()[line_number - 1].strip()
+        return code_line
+    except (IndexError, ValueError):
+        return label
+
+
+def calculate_weighted_similarity_and_report_lines(graph1, graph2):
+    """
+    Calculate a weighted similarity score between two normalized AST graphs and report similar lines.
     """
     total_nodes = len(graph1) + len(graph2)
     matching_nodes = 0
+    similar_lines = []
 
+    # Collect all line numbers from both graphs
+    all_lines = set()
+    for node, edges in graph1.items():
+        all_lines.update(edges)
+    for node, edges in graph2.items():
+        all_lines.update(edges)
+
+    # Identify matching nodes and collect similar lines
     for node in graph1:
         if node in graph2 and set(graph1[node]) == set(graph2[node]):
             matching_nodes += 1
+            # Update similar_lines with the line numbers from the current node
+            similar_lines.append((node, node))
 
+    # Calculate similarity score
     similarity_score = (2 * matching_nodes / total_nodes) * 100
-    return similarity_score
+
+    return similarity_score, similar_lines
 
 
 def calculate_similarity_score(self, other_graph):
@@ -151,6 +175,6 @@ print(output)
 print("\n Differential Analysis")
 graph1 = build_ast_graph(python_code1)
 graph2 = build_ast_graph(python_code2)
-differential_analysis(graph1, graph2)
+differential_analysis(graph1, graph2, python_code1, python_code2)
 print("\n Structural Analysis")
 structural_analysis(graph1, graph2)
