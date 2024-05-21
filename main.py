@@ -1,6 +1,5 @@
 import ast
 import networkx as nx
-from graph import plot
 from graph_from_ast import build_ast_graph, visualize_graph
 
 
@@ -45,6 +44,8 @@ def normalize_ast(graph, code):
         normalized_graph[normalized_node] = normalized_edges
         line_map[normalized_node] = get_code_line(data["label"], code)
 
+    # print(line_map)
+
     return normalized_graph, line_map
 
 
@@ -53,8 +54,11 @@ def normalize_node(label):
     Example normalization function that removes specific identifiers or variable names,
     and includes line information.
     """
-    # Simplify labels for normalization by removing values, e.g., 'Assign: x = 1' -> 'Assign'
-    simplified_label = label.split(":")[0]
+    # Capture control flow structures in normalization
+    control_flow_keywords = {"If", "For", "While", "Else"}
+    label_parts = label.split(":")
+    simplified_label = label_parts[0]
+    # print("Label 0", simplified_label)
 
     return simplified_label
 
