@@ -44,8 +44,6 @@ def normalize_ast(graph, code):
         normalized_graph[normalized_node] = normalized_edges
         line_map[normalized_node] = get_code_line(data["label"], code)
 
-    # print(line_map)
-
     return normalized_graph, line_map
 
 
