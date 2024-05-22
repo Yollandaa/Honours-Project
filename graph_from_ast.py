@@ -31,7 +31,6 @@ class ASTGraphBuilder(ast.NodeVisitor):
         self.add_node(node, f"Return: {value}")
         self.generic_visit(node)
 
-        # If the previous node was a print statement, connect it to this return statement
         if (
             self.parent_stack
             and isinstance(self.parent_stack[-1], ast.Call)
@@ -46,22 +45,18 @@ class ASTGraphBuilder(ast.NodeVisitor):
         args = self.get_call_args(node)
         call_description = f"Call: {func_name}({args})"
 
-        # Check if it's a print() call
+        self.add_node(node, call_description)
+
         if func_name == "print":
-            self.add_node(node, call_description)
             if self.parent_stack:
-                # Connect the "Print" node to the relevant parent node
-                self.graph.add_edge(self.parent_stack[-1], node)
+                self.graph.add_edge(self.parent_stack[-1], self.node_map[node])
         else:
-            self.add_node(node, call_description)
-            # Check if the call is assigned to a variable
             if (
                 isinstance(node.func, ast.Name)
                 and node.func.id in self.node_map.values()
             ):
                 if self.parent_stack:
-                    # Connect the call node to the assignment node
-                    self.graph.add_edge(self.parent_stack[-1], node)
+                    self.graph.add_edge(self.parent_stack[-1], self.node_map[node])
 
         self.generic_visit(node)
 
@@ -70,11 +65,29 @@ class ASTGraphBuilder(ast.NodeVisitor):
         value = self.get_source_segment(node.value)
         self.add_node(node, f"Assign: {targets} = {value}")
 
-        # Connect the assign node to its expression
         if isinstance(node.value, ast.Call):
             self.graph.add_edge(self.node_map[node], self.node_map[node.value])
 
         self.generic_visit(node)
+
+    def visit_For(self, node):
+        target = self.get_source_segment(node.target)
+        iter = self.get_source_segment(node.iter)
+        self.add_node(node, f"For: {target} in {iter}")
+        self.visit(node.iter)
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+
+    def visit_While(self, node):
+        test = self.get_source_segment(node.test)
+        self.add_node(node, f"While: {test}")
+        self.visit(node.test)
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
 
     def get_source_segment(self, node):
         start_lineno = node.lineno - 1
@@ -97,9 +110,6 @@ class ASTGraphBuilder(ast.NodeVisitor):
             return node.func.id
         elif isinstance(node.func, ast.Attribute):
             return f"{self.get_source_segment(node.func.value)}.{node.func.attr}"
-        # Recognize print as a special case
-        elif node.func.id == "print":
-            return "print"
         return "Unknown"
 
     def get_call_args(self, node):
@@ -150,15 +160,37 @@ def visualize_graph(graph):
 
 if __name__ == "__main__":
     source_code = """
-def factorial(n):
-    if n == 0:
-        return 1
-    else:
-        return n * factorial(n-1)
+import math
 
-result = factorial(5)
-print(result)
-print(result)
+def search_binary(collection, target_value):
+    lower_bound = 0
+    upper_bound = len(collection) - 1
+    position = -1
+
+    while upper_bound >= lower_bound and position == -1:
+        middle = int(math.floor((upper_bound + lower_bound) / 2.0))
+
+        print(f"Searching at position {middle} with bounds ({lower_bound}, {upper_bound})")
+
+        if collection[middle] == target_value:
+            position = middle
+        elif collection[middle] > target_value:
+            upper_bound = middle - 1
+        else:
+            lower_bound = middle + 1
+
+    return position
+
+def sum_of_list(lst):
+    total = 0
+    for num in lst:
+        total += num
+    return total
+
+data_list = [2, 5, 7, 9, 11, 17, 222]
+print(search_binary(data_list, 11))
+print(search_binary(data_list, 12))
+print(sum_of_list(data_list))
 """
     graph = build_ast_graph(source_code)
     visualize_graph(graph)
