@@ -92,6 +92,7 @@ def structural_analysis(
     normalized_plagiarized,
     graph2,
 ):
+    # Base Case
     if nx.is_isomorphic(graph1, graph2):
         print("The two codes are structurally similar.")
     else:
@@ -138,35 +139,9 @@ def dynamic_analysis(execution_path_1, execution_path_2):
         print("Significant deviation detected.")
 
 
-PLAGIARISM_THRESHOLD = 70
+PLAGIARISM_THRESHOLD = 60
 
 python_code1 = """
-import math
-
-
-def bin_search(li, element):
-    bottom = 0
-    top = len(li) - 1
-    index = -1
-    while top >= bottom and index == -1:
-        mid = int(math.floor((top + bottom) / 2.0))
-        if li[mid] == element:
-            index = mid
-        elif li[mid] > element:
-            top = mid - 1
-        else:
-            bottom = mid + 1
-    return index
-
-
-li = [2, 5, 7, 9, 11, 17, 222]
-print(bin_search(li, 11))
-print(bin_search(li, 12))
-
-
-"""
-
-python_code2 = """
 import math
 
 
@@ -194,10 +169,35 @@ def search_binary(collection, target_value):
 
 
 # Sample data for demonstration
-data_list = [22, 25, 27, 29, 31, 217, 223]
+data_list = [22, 25, 21, 29, 21, 217, 2]
 # Test cases
-print(search_binary(data_list, 29))  # Expected output: 4
-print(search_binary(data_list, 2))  # Expected output: -1
+print(search_binary(data_list, 21))  # Expected output: 4
+print(search_binary(data_list, 12))  # Expected output: -1
+
+"""
+
+python_code2 = """
+import math
+
+
+def bin_search(li, element):
+    bottom = 0
+    top = len(li) - 1
+    index = -1
+    while top >= bottom and index == -1:
+        mid = int(math.floor((top + bottom) / 2.0))
+        if li[mid] == element:
+            index = mid
+        elif li[mid] > element:
+            top = mid - 1
+        else:
+            bottom = mid + 1
+    return index
+
+
+li = [2, 5, 7, 9, 11, 17, 222]
+print(bin_search(li, 11))
+print(bin_search(li, 12))
 
 """
 
@@ -205,7 +205,7 @@ print("\n Building AST Analysis")
 graph1 = build_ast_graph(python_code1)
 graph2 = build_ast_graph(python_code2)
 
-visualize_graph(graph1)
+# visualize_graph(graph1)
 
 print("\n Structural Analysis")
 static_birthmarks1, static_lines1 = normalize_ast(
