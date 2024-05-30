@@ -2,32 +2,12 @@ import ast
 import networkx as nx
 import matplotlib.pyplot as plt
 from graph_from_ast import build_ast_graph, visualize_graph
-
-
-def differential_analysis(graph1, graph2, code1, code2):
-    normalized_original, original_lines = normalize_ast(graph1, code1)
-    normalized_plagiarized, plagiarized_lines = normalize_ast(graph2, code2)
-
-    print("-----------------Normalized Original----------------------")
-    print(normalized_original)
-    print(normalized_plagiarized)
-    print(original_lines)
-    print(plagiarized_lines)
-
-    similarity_score, similar_lines = calculate_weighted_similarity_and_report_lines(
-        normalized_original, normalized_plagiarized
-    )
-
-    print("Similarity score: ", similarity_score)
-    if similarity_score > PLAGIARISM_THRESHOLD:
-        print("Potential plagiarism detected.")
-        print("\n Similar lines:")
-        for line1, line2 in similar_lines:
-            print(
-                f"Code 1: {original_lines[line1]}\nCode 2: {plagiarized_lines[line2]}\n"
-            )
-    else:
-        print("No plagiarism detected.")
+from dynamic import (
+    start_tracing,
+    stop_tracing,
+    load_runtime_data,
+    analyze_runtime_data,
+)
 
 
 def normalize_ast(graph, code):
@@ -82,15 +62,80 @@ def calculate_weighted_similarity_and_report_lines(graph1, graph2):
     return similarity_score, similar_lines
 
 
-def structural_analysis(graph1, graph2):
+def combine_birthmarks(static_birthmarks, dynamic_birthmarks):
+    return {"static": static_birthmarks, "dynamic": dynamic_birthmarks}
+
+
+def calculate_combined_similarity(birthmarks1, birthmarks2):
+    static_similarity, _ = calculate_weighted_similarity_and_report_lines(
+        birthmarks1["static"], birthmarks2["static"]
+    )
+
+    dynamic_similarity = 0
+    total_dynamic_sequences = len(birthmarks1["dynamic"]) + len(birthmarks2["dynamic"])
+    matching_sequences = sum(
+        1 for seq in birthmarks1["dynamic"] if seq in birthmarks2["dynamic"]
+    )
+
+    if total_dynamic_sequences > 0:
+        dynamic_similarity = (2 * matching_sequences / total_dynamic_sequences) * 100
+    print("\n Dynamic Similarity Score: ", dynamic_similarity)
+
+    return (static_similarity + dynamic_similarity) / 2
+
+
+def structural_analysis(
+    original_lines,
+    normalized_original,
+    graph1,
+    plagiarized_lines,
+    normalized_plagiarized,
+    graph2,
+):
     if nx.is_isomorphic(graph1, graph2):
         print("The two codes are structurally similar.")
     else:
         print("The two codes are structurally dissimilar.")
 
-    # Additional structural analysis can be implemented here
-    print(graph1)
-    print(graph2)
+    # Calculation of structural similarity
+    similarity_score, similar_lines = calculate_weighted_similarity_and_report_lines(
+        normalized_original, normalized_plagiarized
+    )
+
+    print("Similarity score: ", similarity_score)
+    if similarity_score > PLAGIARISM_THRESHOLD:
+        print("Potential plagiarism detected.")
+        print("\n Similar lines:")
+        for line1, line2 in similar_lines:
+            print(
+                f"Code 1: {original_lines[line1]}\nCode 2: {plagiarized_lines[line2]}\n"
+            )
+    else:
+        print("No plagiarism detected.")
+
+    print("-----------------Normalized Original----------------------")
+    print(normalized_original)
+    print(normalized_plagiarized)
+    print(original_lines)
+    print(plagiarized_lines)
+
+
+def dynamic_analysis(execution_path_1, execution_path_2):
+    """Analysing the execution paths of the two programs"""
+    """ Doesn't work: was trying something"""
+    deviation_score = 0
+
+    # Compare execution paths
+    for step in execution_path_1:
+        if step not in execution_path_2:
+            deviation_score += 1
+
+    # Normalize score and apply threshold
+    deviation_score_normalized = deviation_score / max(
+        len(execution_path_1), len(execution_path_2)
+    )
+    if deviation_score_normalized > PLAGIARISM_THRESHOLD:
+        print("Significant deviation detected.")
 
 
 PLAGIARISM_THRESHOLD = 70
@@ -149,17 +194,59 @@ def search_binary(collection, target_value):
 
 
 # Sample data for demonstration
-data_list = [2, 5, 7, 9, 11, 17, 222]
+data_list = [22, 25, 27, 29, 31, 217, 223]
 # Test cases
-print(search_binary(data_list, 11))  # Expected output: 4
-print(search_binary(data_list, 12))  # Expected output: -1
+print(search_binary(data_list, 29))  # Expected output: 4
+print(search_binary(data_list, 2))  # Expected output: -1
 
 """
 
-print("\n Differential Analysis")
+print("\n Building AST Analysis")
 graph1 = build_ast_graph(python_code1)
 graph2 = build_ast_graph(python_code2)
-differential_analysis(graph1, graph2, python_code1, python_code2)
+
+visualize_graph(graph1)
 
 print("\n Structural Analysis")
-structural_analysis(graph1, graph2)
+static_birthmarks1, static_lines1 = normalize_ast(
+    build_ast_graph(python_code1), python_code1
+)
+static_birthmarks2, static_lines2 = normalize_ast(
+    build_ast_graph(python_code2), python_code2
+)
+structural_analysis(
+    static_lines1, static_birthmarks1, graph1, static_lines2, static_birthmarks2, graph2
+)
+
+
+print("-----------------------------------------------------------------------")
+print("\n Dynamic Analysis")
+# Execute and trace the first code
+start_tracing()
+exec(python_code1)
+stop_tracing("runtime_data1.json")
+
+# Execute and trace the second code
+start_tracing()
+exec(python_code2)
+stop_tracing("runtime_data2.json")
+
+# Load and analyze dynamic data
+runtime_data1 = load_runtime_data("runtime_data1.json")
+runtime_data2 = load_runtime_data("runtime_data2.json")
+
+dynamic_birthmarks1 = analyze_runtime_data(runtime_data1)
+dynamic_birthmarks2 = analyze_runtime_data(runtime_data2)
+
+# Calculate dynamic similarity
+
+
+# Combine static and dynamic birthmarks
+combined_birthmarks1 = combine_birthmarks(static_birthmarks1, dynamic_birthmarks1)
+combined_birthmarks2 = combine_birthmarks(static_birthmarks2, dynamic_birthmarks2)
+
+# Calculate and print combined similarity score
+similarity_score = calculate_combined_similarity(
+    combined_birthmarks1, combined_birthmarks2
+)
+print("\n Combined Similarity Score:", similarity_score)

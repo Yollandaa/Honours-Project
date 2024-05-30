@@ -25,7 +25,7 @@ def search_binary(collection, target_value):
 
 
 # Sample data for demonstration
-data_list = [2, 5, 7, 9, 11, 17, 222]
+data_list = [22, 25, 21, 29, 21, 217, 2]
 # Test cases
-print(search_binary(data_list, 11))  # Expected output: 4
+print(search_binary(data_list, 21))  # Expected output: 4
 print(search_binary(data_list, 12))  # Expected output: -1

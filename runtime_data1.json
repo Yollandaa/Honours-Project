@@ -1,0 +1,38 @@
+[
+    {
+        "event": "call",
+        "func_name": "<module>",
+        "line_no": 1,
+        "filename": "<string>"
+    },
+    {
+        "event": "call",
+        "func_name": "bin_search",
+        "line_no": 5,
+        "filename": "<string>"
+    },
+    {
+        "event": "return",
+        "func_name": "bin_search"
+    },
+    {
+        "event": "call",
+        "func_name": "bin_search",
+        "line_no": 5,
+        "filename": "<string>"
+    },
+    {
+        "event": "return",
+        "func_name": "bin_search"
+    },
+    {
+        "event": "return",
+        "func_name": "<module>"
+    },
+    {
+        "event": "call",
+        "func_name": "stop_tracing",
+        "line_no": 41,
+        "filename": "c:\\Users\\e1005296\\OneDrive - Sanlam Life Insurance Limited\\Documents\\Personal\\Honours-Project\\dynamic.py"
+    }
+]
