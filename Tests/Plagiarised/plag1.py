@@ -4,6 +4,7 @@ def calculate_vowel_frequency():
     vowel_count = 0
 
     for character in text:
+
         if character.lower() in vowels:
             vowel_count += 1
 

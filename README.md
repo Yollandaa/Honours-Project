@@ -15,3 +15,6 @@ pip install -r requirements.txt
 - Call: Represents a function call.
 - BinOp: Represents binary operations (e.g., addition, concatenation).
 - Expr: Represents an expression statement.
+
+## All about call graphs
+- https://www.freecodecamp.org/news/how-to-automate-call-graph-creation/

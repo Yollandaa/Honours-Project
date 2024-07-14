@@ -1,13 +1,8 @@
 import ast
 import networkx as nx
 import matplotlib.pyplot as plt
-from graph_from_ast import build_ast_graph, visualize_graph
-from dynamic import (
-    start_tracing,
-    stop_tracing,
-    load_runtime_data,
-    analyze_runtime_data,
-)
+from graph_from_ast import *
+from dynamic import *
 
 
 def normalize_ast(graph, code):
@@ -142,62 +137,41 @@ def dynamic_analysis(execution_path_1, execution_path_2):
 PLAGIARISM_THRESHOLD = 60
 
 python_code1 = """
-import math
+def calculate_vowel_frequency():
+    text = "johndoe123"
+    vowels = ["a", "e", "i", "o", "u"]
+    vowel_count = 0
+
+    for character in text:
+        if character.lower() in vowels:
+            vowel_count += 1
+
+    print(f"Vowel Count: {vowel_count}")
 
 
-def search_binary(collection, target_value):
-    lower_bound = 0
-    upper_bound = len(collection) - 1
-    position = -1
+if __name__ == "__main__":
+    calculate_vowel_frequency()
 
-    while upper_bound >= lower_bound and position == -1:
-        middle = int(math.floor((upper_bound + lower_bound) / 2.0))
-
-        # Debug statement to trace computation
-        print(
-            f"Searching at position {middle} with bounds ({lower_bound}, {upper_bound})"
-        )
-
-        if collection[middle] == target_value:
-            position = middle
-        elif collection[middle] > target_value:
-            upper_bound = middle - 1
-        else:
-            lower_bound = middle + 1
-
-    return position
-
-
-# Sample data for demonstration
-data_list = [22, 25, 21, 29, 21, 217, 2]
-# Test cases
-print(search_binary(data_list, 21))  # Expected output: 4
-print(search_binary(data_list, 12))  # Expected output: -1
 
 """
 
 python_code2 = """
-import math
+def count_vowels():
+    st = "ammaradil"
+    vowle = ["a", "e", "i", "o", "u"]
+    count = 0
+
+    for s in st:
+        if s in vowle:
+            count = count + 1
+
+    print("Count", count)
 
 
-def bin_search(li, element):
-    bottom = 0
-    top = len(li) - 1
-    index = -1
-    while top >= bottom and index == -1:
-        mid = int(math.floor((top + bottom) / 2.0))
-        if li[mid] == element:
-            index = mid
-        elif li[mid] > element:
-            top = mid - 1
-        else:
-            bottom = mid + 1
-    return index
+class main:
+    if __name__ == "__main__":
+        count_vowels()
 
-
-li = [2, 5, 7, 9, 11, 17, 222]
-print(bin_search(li, 11))
-print(bin_search(li, 12))
 
 """
 
@@ -205,7 +179,8 @@ print("\n Building AST Analysis")
 graph1 = build_ast_graph(python_code1)
 graph2 = build_ast_graph(python_code2)
 
-# visualize_graph(graph1)
+visualize_graph(graph1)
+visualize_graph(graph2)
 
 print("\n Structural Analysis")
 static_birthmarks1, static_lines1 = normalize_ast(

@@ -10,6 +10,5 @@ def count_vowels():
     print("Count", count)
 
 
-class main:
-    if __name__ == "__main__":
-        count_vowels()
+if __name__ == "__main__":
+    count_vowels()
