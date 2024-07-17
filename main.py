@@ -1,8 +1,7 @@
-import ast
-import networkx as nx
-import matplotlib.pyplot as plt
-from graph_from_ast import *
-from dynamic import *
+import difflib
+from zss import simple_distance, Node
+from static_analysis import *
+from dynamic_analysis import *
 
 
 def normalize_ast(graph, code):
@@ -37,48 +36,6 @@ def get_code_line(label, code):
         return label
 
 
-def calculate_weighted_similarity_and_report_lines(graph1, graph2):
-    total_nodes = len(graph1) + len(graph2)
-    matching_nodes = 0
-    similar_lines = []
-
-    all_nodes1 = set(graph1.keys())
-    all_nodes2 = set(graph2.keys())
-
-    common_nodes = all_nodes1.intersection(all_nodes2)
-
-    for node in common_nodes:
-        if set(graph1[node]) == set(graph2[node]):
-            matching_nodes += 1
-            similar_lines.append((node, node))
-
-    similarity_score = (2 * matching_nodes / total_nodes) * 100
-
-    return similarity_score, similar_lines
-
-
-def combine_birthmarks(static_birthmarks, dynamic_birthmarks):
-    return {"static": static_birthmarks, "dynamic": dynamic_birthmarks}
-
-
-def calculate_combined_similarity(birthmarks1, birthmarks2):
-    static_similarity, _ = calculate_weighted_similarity_and_report_lines(
-        birthmarks1["static"], birthmarks2["static"]
-    )
-
-    dynamic_similarity = 0
-    total_dynamic_sequences = len(birthmarks1["dynamic"]) + len(birthmarks2["dynamic"])
-    matching_sequences = sum(
-        1 for seq in birthmarks1["dynamic"] if seq in birthmarks2["dynamic"]
-    )
-
-    if total_dynamic_sequences > 0:
-        dynamic_similarity = (2 * matching_sequences / total_dynamic_sequences) * 100
-    print("\n Dynamic Similarity Score: ", dynamic_similarity)
-
-    return (static_similarity + dynamic_similarity) / 2
-
-
 def structural_analysis(
     original_lines,
     normalized_original,
@@ -109,33 +66,72 @@ def structural_analysis(
     else:
         print("No plagiarism detected.")
 
-    print("-----------------Normalized Original----------------------")
-    print(normalized_original)
-    print(normalized_plagiarized)
-    print(original_lines)
-    print(plagiarized_lines)
+    # print("-----------------Normalized Original----------------------")
+    # print(normalized_original)
+    # print(normalized_plagiarized)
+    # print(original_lines)
+    # print(plagiarized_lines)
 
 
-def dynamic_analysis(execution_path_1, execution_path_2):
-    """Analysing the execution paths of the two programs"""
-    """ Doesn't work: was trying something"""
-    deviation_score = 0
+def calculate_weighted_similarity_and_report_lines(graph1, graph2):
+    total_nodes = len(graph1) + len(graph2)
+    matching_nodes = 0
+    similar_lines = []
 
-    # Compare execution paths
-    for step in execution_path_1:
-        if step not in execution_path_2:
-            deviation_score += 1
+    all_nodes1 = set(graph1.keys())
+    all_nodes2 = set(graph2.keys())
 
-    # Normalize score and apply threshold
-    deviation_score_normalized = deviation_score / max(
-        len(execution_path_1), len(execution_path_2)
-    )
-    if deviation_score_normalized > PLAGIARISM_THRESHOLD:
-        print("Significant deviation detected.")
+    common_nodes = all_nodes1.intersection(all_nodes2)
+
+    for node in common_nodes:
+        if set(graph1[node]) == set(graph2[node]):
+            matching_nodes += 1
+            similar_lines.append((node, node))
+
+    similarity_score = (2 * matching_nodes / total_nodes) * 100
+
+    return similarity_score, similar_lines
+
+
+## End of Structural Analysis for Static graph representation
+
+
+def calculate_tree_edit_distance(graph1, graph2):
+    def build_zss_tree(graph, root):
+        node = Node(graph.nodes[root]["label"])
+        for child in graph.successors(root):
+            node.addkid(build_zss_tree(graph, child))
+        return node
+
+    root1 = [n for n, d in graph1.in_degree() if d == 0][0]
+    root2 = [n for n, d in graph2.in_degree() if d == 0][0]
+
+    zss_tree1 = build_zss_tree(graph1, root1)
+    zss_tree2 = build_zss_tree(graph2, root2)
+
+    return simple_distance(zss_tree1, zss_tree2)
+
+
+def calculate_token_similarity(code1, code2):
+    tokens1 = code1.split()
+    tokens2 = code2.split()
+    return difflib.SequenceMatcher(None, tokens1, tokens2).ratio() * 100
+
+
+def calculate_execution_trace_similarity(trace1, trace2):
+    sm = difflib.SequenceMatcher(None, trace1, trace2)
+    return sm.ratio() * 100
+
+
+def calculate_combined_similarity(
+    static_similarity, dynamic_similarity, weights=(0.5, 0.5)
+):
+    return static_similarity * weights[0] + dynamic_similarity * weights[1]
 
 
 PLAGIARISM_THRESHOLD = 60
 
+# Example Python code snippets for comparison
 python_code1 = """
 def calculate_vowel_frequency():
     text = "johndoe123"
@@ -148,11 +144,8 @@ def calculate_vowel_frequency():
 
     print(f"Vowel Count: {vowel_count}")
 
-
 if __name__ == "__main__":
     calculate_vowel_frequency()
-
-
 """
 
 python_code2 = """
@@ -168,19 +161,18 @@ def count_vowels():
     print("Count", count)
 
 
-class main:
-    if __name__ == "__main__":
-        count_vowels()
-
+if __name__ == "__main__":
+    count_vowels()
 
 """
 
-print("\n Building AST Analysis")
+# Build AST graphs
 graph1 = build_ast_graph(python_code1)
 graph2 = build_ast_graph(python_code2)
 
-visualize_graph(graph1)
-visualize_graph(graph2)
+# Vizualize the AST graph
+# visualize_graph(graph1)
+# visualize_graph(graph2)
 
 print("\n Structural Analysis")
 static_birthmarks1, static_lines1 = normalize_ast(
@@ -193,35 +185,40 @@ structural_analysis(
     static_lines1, static_birthmarks1, graph1, static_lines2, static_birthmarks2, graph2
 )
 
+# Generate call graphs (placeholder functionality)
+generate_call_graph(python_code1, "call_graph1.png")
+generate_call_graph(python_code2, "call_graph2.png")
 
-print("-----------------------------------------------------------------------")
-print("\n Dynamic Analysis")
-# Execute and trace the first code
+# Calculate tree edit distance between ASTs
+tree_edit_distance = calculate_tree_edit_distance(graph1, graph2)
+print(f"Tree Edit Distance: {tree_edit_distance}")
+
+# Calculate token similarity between code snippets
+token_similarity = calculate_token_similarity(python_code1, python_code2)
+print(f"Token Similarity: {token_similarity:.2f}%")
+
+# Trace and compare execution traces
 start_tracing()
 exec(python_code1)
 stop_tracing("runtime_data1.json")
+trace1 = analyze_runtime_data(load_runtime_data("runtime_data1.json"))
 
-# Execute and trace the second code
 start_tracing()
 exec(python_code2)
 stop_tracing("runtime_data2.json")
+trace2 = analyze_runtime_data(load_runtime_data("runtime_data2.json"))
 
-# Load and analyze dynamic data
-runtime_data1 = load_runtime_data("runtime_data1.json")
-runtime_data2 = load_runtime_data("runtime_data2.json")
+execution_trace_similarity = calculate_execution_trace_similarity(trace1, trace2)
+print(f"Execution Trace Similarity: {execution_trace_similarity:.2f}%")
 
-dynamic_birthmarks1 = analyze_runtime_data(runtime_data1)
-dynamic_birthmarks2 = analyze_runtime_data(runtime_data2)
-
-# Calculate dynamic similarity
-
-
-# Combine static and dynamic birthmarks
-combined_birthmarks1 = combine_birthmarks(static_birthmarks1, dynamic_birthmarks1)
-combined_birthmarks2 = combine_birthmarks(static_birthmarks2, dynamic_birthmarks2)
-
-# Calculate and print combined similarity score
-similarity_score = calculate_combined_similarity(
-    combined_birthmarks1, combined_birthmarks2
+# Combine static and dynamic similarities
+combined_similarity = calculate_combined_similarity(
+    token_similarity, execution_trace_similarity
 )
-print("\n Combined Similarity Score:", similarity_score)
+print(f"Combined Similarity: {combined_similarity:.2f}%")
+
+# Determine potential plagiarism
+if combined_similarity > PLAGIARISM_THRESHOLD:
+    print("Potential plagiarism detected.")
+else:
+    print("No plagiarism detected.")

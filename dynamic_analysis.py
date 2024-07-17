@@ -60,7 +60,6 @@ def analyze_runtime_data(runtime_data):
     return call_sequences
 
 
-# Placeholder for integrating pycallgraph for call graphs
 def generate_call_graph(source_code, output_file="call_graph.png"):
 
     graphviz = GraphvizOutput()
