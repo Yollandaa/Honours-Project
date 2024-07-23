@@ -3,6 +3,9 @@ from zss import simple_distance, Node
 from static_analysis import *
 from dynamic_analysis import *
 
+# from token_similarity import calculate_token_similarity
+from normalize_code import normalize_code  # Import normalize_code
+
 
 def normalize_ast(graph, code):
     normalized_graph = {}
@@ -96,26 +99,14 @@ def calculate_weighted_similarity_and_report_lines(graph1, graph2):
 ## End of Structural Analysis for Static graph representation
 
 
-def calculate_tree_edit_distance(graph1, graph2):
-    def build_zss_tree(graph, root):
-        node = Node(graph.nodes[root]["label"])
-        for child in graph.successors(root):
-            node.addkid(build_zss_tree(graph, child))
-        return node
+def calculate_token_similarity(norm_code1, norm_code2):
+    tokens1 = norm_code1.split()
+    tokens2 = norm_code2.split()
+    print(tokens1)
+    print(tokens2)
 
-    root1 = [n for n, d in graph1.in_degree() if d == 0][0]
-    root2 = [n for n, d in graph2.in_degree() if d == 0][0]
-
-    zss_tree1 = build_zss_tree(graph1, root1)
-    zss_tree2 = build_zss_tree(graph2, root2)
-
-    return simple_distance(zss_tree1, zss_tree2)
-
-
-def calculate_token_similarity(code1, code2):
-    tokens1 = code1.split()
-    tokens2 = code2.split()
-    return difflib.SequenceMatcher(None, tokens1, tokens2).ratio() * 100
+    similarity_ratio = difflib.SequenceMatcher(None, tokens1, tokens2).ratio()
+    return similarity_ratio * 100
 
 
 def calculate_execution_trace_similarity(trace1, trace2):
@@ -165,6 +156,10 @@ if __name__ == "__main__":
     count_vowels()
 
 """
+# Normalize the code
+normalized_code1 = normalize_code(python_code1)
+normalized_code2 = normalize_code(python_code2)
+
 
 # Build AST graphs
 graph1 = build_ast_graph(python_code1)
@@ -185,40 +180,57 @@ structural_analysis(
     static_lines1, static_birthmarks1, graph1, static_lines2, static_birthmarks2, graph2
 )
 
-# Generate call graphs (placeholder functionality)
-generate_call_graph(python_code1, "call_graph1.png")
-generate_call_graph(python_code2, "call_graph2.png")
-
-# Calculate tree edit distance between ASTs
-tree_edit_distance = calculate_tree_edit_distance(graph1, graph2)
-print(f"Tree Edit Distance: {tree_edit_distance}")
-
-# Calculate token similarity between code snippets
-token_similarity = calculate_token_similarity(python_code1, python_code2)
+print(
+    "--------------------------------- Token Similarity: Static Side ----------------------------------"
+)
+# Calculate token similarity
+token_similarity = calculate_token_similarity(normalized_code1, normalized_code2)
 print(f"Token Similarity: {token_similarity:.2f}%")
 
+
+print(
+    "------------------------------------ Tracing Analysis --------------------------------"
+)
 # Trace and compare execution traces
 start_tracing()
+# exec(normalized_code1)
 exec(python_code1)
 stop_tracing("runtime_data1.json")
 trace1 = analyze_runtime_data(load_runtime_data("runtime_data1.json"))
 
+# Seems like the trace keeps data of the first source code
+#  So erase the trace
+# Better option is to modify the stop_tracing
+
 start_tracing()
+# exec(normalized_code2)
 exec(python_code2)
 stop_tracing("runtime_data2.json")
 trace2 = analyze_runtime_data(load_runtime_data("runtime_data2.json"))
 
+print(trace1)
+print()
+print(trace2)
+
 execution_trace_similarity = calculate_execution_trace_similarity(trace1, trace2)
 print(f"Execution Trace Similarity: {execution_trace_similarity:.2f}%")
 
-# Combine static and dynamic similarities
-combined_similarity = calculate_combined_similarity(
-    token_similarity, execution_trace_similarity
+print(
+    "--------------------------------- Call graphs Similarity: Dynamic Side ----------------------------------"
 )
-print(f"Combined Similarity: {combined_similarity:.2f}%")
+# Generate call graphs (placeholder functionality)
+generate_call_graph(python_code1, "call_graph1.png")
+generate_call_graph(python_code2, "call_graph2.png")
+
+
+# Combine static and dynamic similarities
+# combined_similarity = calculate_combined_similarity(
+#     token_similarity, execution_trace_similarity
+# )
+# print(f"Combined Similarity: {combined_similarity:.2f}%")
 
 # Determine potential plagiarism
-if combined_similarity > PLAGIARISM_THRESHOLD:
-    print("Potential plagiarism detected.")
-else:
-    print("No plagiarism detected.")
+# if combined_similarity > PLAGIARISM_THRESHOLD:
+#     print("Potential plagiarism detected.")
+# else:
+#     print("No plagiarism detected.")

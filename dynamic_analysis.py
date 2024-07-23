@@ -36,8 +36,12 @@ def start_tracing():
 
 
 def stop_tracing(filepath):
+    global runtime_data
     sys.settrace(None)
     save_runtime_data(filepath)
+    runtime_data = (
+        []
+    )  # Reset the trace data: This was causing the second trace to have data of the first one
 
 
 def load_runtime_data(filepath):
