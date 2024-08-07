@@ -155,3 +155,35 @@ def visualize_graph(graph):
         arrowsize=20,
     )
     plt.show()
+
+
+def normalize_ast(graph, code):
+    normalized_graph = {}
+    line_map = {}
+
+    for node_id, data in graph.nodes(data=True):
+        normalized_node = normalize_node(data.get("label", ""))
+        normalized_edges = [
+            normalize_node(graph.nodes[neighbor].get("label", ""))
+            for neighbor in graph.neighbors(node_id)
+        ]
+        normalized_graph[normalized_node] = normalized_edges
+        line_map[normalized_node] = get_code_line(data.get("label", ""), code)
+
+    return normalized_graph, line_map
+
+
+def normalize_node(label):
+    label_parts = label.split(":")
+    simplified_label = label_parts[0] if label_parts else label
+
+    return simplified_label
+
+
+def get_code_line(label, code):
+    try:
+        line_number = int(label.split(":")[1].strip().split()[1])
+        code_line = code.splitlines()[line_number - 1].strip()
+        return code_line
+    except (IndexError, ValueError):
+        return label

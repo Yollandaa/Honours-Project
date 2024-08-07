@@ -1,7 +1,10 @@
-import json
+import os
 import sys
 from pycallgraph2 import PyCallGraph
 from pycallgraph2.output import GraphvizOutput
+from networkx.algorithms import isomorphism
+import networkx as nx
+import json
 
 # Tracing functions
 runtime_data = []
@@ -26,7 +29,8 @@ def trace_calls(frame, event, arg):
     return trace_calls
 
 
-def save_runtime_data(filepath):
+def save_runtime_data(filename):
+    filepath = os.path.join("./Results", filename)
     with open(filepath, "w") as f:
         json.dump(runtime_data, f, indent=4)
 
@@ -44,7 +48,8 @@ def stop_tracing(filepath):
     )  # Reset the trace data: This was causing the second trace to have data of the first one
 
 
-def load_runtime_data(filepath):
+def load_runtime_data(filename):
+    filepath = os.path.join("./Results", filename)
     with open(filepath, "r") as f:
         return json.load(f)
 
@@ -64,10 +69,38 @@ def analyze_runtime_data(runtime_data):
     return call_sequences
 
 
-def generate_call_graph(source_code, output_file="call_graph.png"):
+def tokenize_trace(trace_data):
+    tokens = []
+    for event in trace_data:
+        tokens.append(event["event"])
+        if "func_name" in event:
+            tokens.append(event["func_name"])
+    return " ".join(tokens)
 
+
+def generate_call_graph(source_code, filename="call_graph.png"):
+    output_file = os.path.join("./Results", filename)
     graphviz = GraphvizOutput()
     graphviz.output_file = output_file
 
     with PyCallGraph(output=graphviz):
-        exec(source_code)
+        exec(source_code, globals())
+
+
+def sequences_to_graph(call_sequences):
+    G = nx.DiGraph()
+    for seq in call_sequences:
+        for i in range(len(seq) - 1):
+            G.add_edge(seq[i], seq[i + 1])
+    return G
+
+
+def compare_call_graphs(call_sequences_1, call_sequences_2):
+    # Convert call sequences to graphs
+    G1 = sequences_to_graph(call_sequences_1)
+    G2 = sequences_to_graph(call_sequences_2)
+
+    # Create a GraphMatcher object to compare the graphs
+    GM = isomorphism.GraphMatcher(G1, G2)
+
+    return GM.is_isomorphic()
